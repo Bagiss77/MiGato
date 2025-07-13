@@ -46,8 +46,8 @@ love_phrases = [
 ]
 
 # URL изображений (заменены на рабочие для примера)
-YES_PHOTO_URL = "https://i.imgur.com/Xuj0BOO.jpg"  # Сердце
-NO_PHOTO_URL = "https://i.imgur.com/siRX1Il.jpg"   # Грустный кот
+YES_PHOTO_URL = "https://imgur.com/gallery/i-think-babies-are-enjoying-doggy-vacation-bit-too-much-Xuj0BOO#/t/happy_doggy_is_happy"  # Сердце
+NO_PHOTO_URL = "https://imgur.com/gallery/shiro-siRX1Il#/t/cat"   # Грустный кот
 
 # Установка команд для меню бота
 async def set_commands(bot: Bot):
