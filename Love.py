@@ -4,20 +4,22 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import BaseFilter
 from aiogram.types import BotCommand
+from aiohttp import web  # Добавляем aiohttp для веб-сервера
 
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(),  # Вывод в консоль (для Render)
-        logging.FileHandler('bot.log')  # Логи в файл
+        logging.StreamHandler(),
+        logging.FileHandler('bot.log')
     ]
 )
 logger = logging.getLogger(__name__)
 
-# Получение токена из переменной окружения
+# Получение токена и порта из переменных окружения
 API_TOKEN = os.getenv('BOT_TOKEN')
+PORT = int(os.getenv('PORT', 8080))  # По умолчанию 8080, если PORT не задан
 if not API_TOKEN:
     logger.error("BOT_TOKEN не найден в переменных окружения")
     raise ValueError("BOT_TOKEN не задан")
@@ -45,9 +47,9 @@ love_phrases = [
     "我爱你，阿莲娜 ❤️ (Китайский)"
 ]
 
-# URL изображений (заменены на рабочие для примера)
-YES_PHOTO_URL = "https://imgur.com/gallery/i-think-babies-are-enjoying-doggy-vacation-bit-too-much-Xuj0BOO#/t/happy_doggy_is_happy"  # Сердце
-NO_PHOTO_URL = "https://imgur.com/gallery/shiro-siRX1Il#/t/cat"   # Грустный кот
+# URL изображений
+YES_PHOTO_URL = "https://imgur.com/Xuj0BOO"  # Исправленный URL
+NO_PHOTO_URL = "https://imgur.com/siRX1Il"   # Исправленный URL
 
 # Установка команд для меню бота
 async def set_commands(bot: Bot):
@@ -90,16 +92,34 @@ async def handle_poll_answer(poll_answer: types.PollAnswer):
         else:  # "Да"
             for phrase in love_phrases:
                 await bot.send_message(chat_id, phrase)
+                await asyncio.sleep(0.5)  # Задержка между сообщениями для избежания спама
             await bot.send_photo(chat_id, photo=YES_PHOTO_URL)
         await send_new_poll(chat_id)
     except Exception as e:
         logger.error(f"Ошибка при обработке ответа на опрос: {e}")
         await bot.send_message(chat_id, "Произошла ошибка, попробуйте позже.")
 
+# Минимальный веб-сервер для Render
+async def handle(request):
+    return web.Response(text="Bot is running")
+
+async def start_web_server():
+    app = web.Application()
+    app.add_routes([web.get('/', handle)])
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', PORT)
+    await site.start()
+    logger.info(f"Веб-сервер запущен на порту {PORT}")
+
 # Основная функция
 async def main():
     try:
+        # Запускаем веб-сервер
+        await start_web_server()
+        # Устанавливаем команды бота
         await set_commands(bot)
+        # Запускаем polling
         await dp.start_polling(bot)
     except Exception as e:
         logger.error(f"Ошибка в основном цикле: {e}")
