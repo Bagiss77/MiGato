@@ -2,7 +2,7 @@ import asyncio
 import os
 import logging
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import BaseFilter
+from aiogram.filters import BaseFilter, Command
 from aiogram.types import BotCommand
 from aiogram.exceptions import TelegramConflictError
 from aiohttp import web
@@ -77,7 +77,7 @@ async def send_new_poll(chat_id: int):
         logger.error(f"Ошибка при отправке опроса: {e}")
 
 # Обработчик команды /start
-@dp.message(commands=["start"])
+@dp.message(Command(commands=["start"]))
 async def cmd_start(message: types.Message):
     logger.info(f"Получена команда /start от {message.from_user.id}")
     await message.answer("Добро пожаловать! Отправьте любое сообщение, чтобы начать опрос.")
@@ -97,7 +97,7 @@ async def handle_poll_answer(poll_answer: types.PollAnswer):
     logger.info(f"Получен ответ на опрос от {chat_id}: опция {option_id}")
     try:
         if option_id == 1:  # "Нет"
-            await bot.send_message(chat_id, "Ответ не верный!")
+            await bot.send_message(chat_id, "Ответ не верный")
             await bot.send_photo(chat_id, photo=NO_PHOTO_URL)
         else:  # "Да"
             for phrase in love_phrases:
@@ -131,7 +131,7 @@ async def main():
         await set_commands(bot)
         while True:
             try:
-                await dp.start_polling(bot, timeout=20, limit=100, fast_connect=True)
+                await dp.start_polling(bot, timeout=20, limit=100)
             except TelegramConflictError as e:
                 logger.error(f"Конфликт инстансов: {e}. Ждём 30 секунд...")
                 await asyncio.sleep(30)
