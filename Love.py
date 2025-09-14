@@ -50,10 +50,10 @@ love_phrases = [
     "我爱你，阿莲娜 ❤️ (Китайский)"
 ]
 
-# Пути к файлам
-YES_PHOTO_URL = f"{BASE_URL}/static/images/yes.jpg"
-YES_VIDEO_URL = f"{BASE_URL}/static/videos/302786_tiny.mp4"
-NO_PHOTO_URL = f"{BASE_URL}/static/images/no.jpg"
+# file_id для медиафайлов
+YES_PHOTO_ID = "ВСТАВЬТЕ_FILE_ID_ДЛЯ_YES_JPG"
+YES_VIDEO_ID = "ВСТАВЬТЕ_FILE_ID_ДЛЯ_302786_TINY_MP4"
+NO_PHOTO_ID = "ВСТАВЬТЕ_FILE_ID_ДЛЯ_NO_JPG"
 
 # Установка команд
 async def set_commands(bot: Bot):
@@ -99,13 +99,13 @@ async def handle_poll_answer(poll_answer: types.PollAnswer):
     try:
         if option_id == 1:  # "Нет"
             await bot.send_message(chat_id, "Ответ не верный")
-            await bot.send_photo(chat_id, photo=NO_PHOTO_URL)
+            await bot.send_photo(chat_id, photo=NO_PHOTO_ID)
         else:  # "Да"
             for phrase in love_phrases:
                 await bot.send_message(chat_id, phrase)
                 await asyncio.sleep(0.5)
-            await bot.send_photo(chat_id, photo=YES_PHOTO_URL)
-            await bot.send_video(chat_id, video=YES_VIDEO_URL)
+            await bot.send_photo(chat_id, photo=YES_PHOTO_ID)
+            await bot.send_video(chat_id, video=YES_VIDEO_ID)
         await send_new_poll(chat_id)
     except Exception as e:
         logger.error(f"Ошибка при обработке ответа на опрос: {e}")
@@ -113,7 +113,7 @@ async def handle_poll_answer(poll_answer: types.PollAnswer):
 
 # Веб-сервер для Render и webhook
 async def on_startup():
-    await bot.delete_webhook()  # Удаляем старый webhook
+    await bot.delete_webhook()
     await bot.set_webhook(WEBHOOK_URL)
     logger.info(f"Webhook установлен на {WEBHOOK_URL}")
 
