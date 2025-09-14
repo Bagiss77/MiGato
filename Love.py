@@ -124,17 +124,25 @@ async def on_shutdown():
 async def handle(request):
     return web.Response(text="Bot is running")
 
+async def static_handler(request):
+    path = request.match_info['path']
+    file_path = os.path.join('static', path)
+    logger.info(f"Запрошен файл: {file_path}")
+    if not os.path.exists(file_path):
+        logger.error(f"Файл не найден: {file_path}")
+        raise web.HTTPNotFound()
+    if file_path.endswith('.jpg'):
+        content_type = 'image/jpeg'
+    elif file_path.endswith('.mp4'):
+        content_type = 'video/mp4'
+    else:
+        content_type = 'application/octet-stream'
+    logger.info(f"Отправка файла {file_path} с Content-Type: {content_type}")
+    return web.FileResponse(file_path, headers={'Content-Type': content_type})
+
 async def start_web_server():
     app = web.Application()
     app.add_routes([web.get('/', handle)])
-    # Кастомный обработчик для static с правильными MIME-типами
-    async def static_handler(request):
-        response = await web.static('/static', 'static')(request)
-        if request.path.endswith('.jpg'):
-            response.headers['Content-Type'] = 'image/jpeg'
-        elif request.path.endswith('.mp4'):
-            response.headers['Content-Type'] = 'video/mp4'
-        return response
     app.add_routes([web.get('/static/{path:.*}', static_handler)])
     SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path='/webhook')
     setup_application(app, dp, bot=bot)
