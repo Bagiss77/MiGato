@@ -3,7 +3,7 @@ import os
 import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import BaseFilter, Command
-from aiogram.types import BotCommand
+from aiogram.types import BotCommand, FSInputFile
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 
@@ -50,10 +50,10 @@ love_phrases = [
     "我爱你，阿莲娜 ❤️ (Китайский)"
 ]
 
-# Пути к файлам
-YES_PHOTO_URL = f"{BASE_URL}/static/images/yes.jpg"
-YES_VIDEO_URL = f"{BASE_URL}/static/videos/302786_tiny.mp4"
-NO_PHOTO_URL = f"{BASE_URL}/static/images/no.jpg"
+# Пути к файлам (через FSInputFile)
+YES_PHOTO_FILE = FSInputFile("static/images/yes.jpg")
+YES_VIDEO_FILE = FSInputFile("static/videos/302786_tiny.mp4")
+NO_PHOTO_FILE = FSInputFile("static/images/no.jpg")
 
 # Установка команд
 async def set_commands(bot: Bot):
@@ -99,13 +99,13 @@ async def handle_poll_answer(poll_answer: types.PollAnswer):
     try:
         if option_id == 1:  # "Нет"
             await bot.send_message(chat_id, "Ответ не верный")
-            await bot.send_photo(chat_id, photo=NO_PHOTO_URL)
+            await bot.send_photo(chat_id, photo=NO_PHOTO_FILE)
         else:  # "Да"
             for phrase in love_phrases:
                 await bot.send_message(chat_id, phrase)
                 await asyncio.sleep(0.5)
-            await bot.send_photo(chat_id, photo=YES_PHOTO_URL)
-            await bot.send_video(chat_id, video=YES_VIDEO_URL)
+            await bot.send_photo(chat_id, photo=YES_PHOTO_FILE)
+            await bot.send_video(chat_id, video=YES_VIDEO_FILE)
         await send_new_poll(chat_id)
     except Exception as e:
         logger.error(f"Ошибка при обработке ответа на опрос: {e}")
@@ -131,14 +131,7 @@ async def static_handler(request):
     if not os.path.exists(file_path):
         logger.error(f"Файл не найден: {file_path}")
         raise web.HTTPNotFound()
-    if file_path.endswith('.jpg'):
-        content_type = 'image/jpeg'
-    elif file_path.endswith('.mp4'):
-        content_type = 'video/mp4'
-    else:
-        content_type = 'application/octet-stream'
-    logger.info(f"Отправка файла {file_path} с Content-Type: {content_type}")
-    return web.FileResponse(file_path, headers={'Content-Type': content_type})
+    return web.FileResponse(file_path)
 
 async def start_web_server():
     app = web.Application()
