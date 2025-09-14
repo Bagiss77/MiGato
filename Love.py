@@ -4,7 +4,8 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import BaseFilter
 from aiogram.types import BotCommand
-from aiohttp import web  # Добавляем aiohttp для веб-сервера
+from aiogram.exceptions import TelegramConflictError
+from aiohttp import web
 
 # Настройка логирования
 logging.basicConfig(
@@ -17,9 +18,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Получение токена и порта из переменных окружения
+# Получение токена и порта
 API_TOKEN = os.getenv('BOT_TOKEN')
-PORT = int(os.getenv('PORT', 8080))  # По умолчанию 8080, если PORT не задан
+PORT = int(os.getenv('PORT', 8080))
+BASE_URL = os.getenv('BASE_URL', 'https://migato-2.onrender.com')
 if not API_TOKEN:
     logger.error("BOT_TOKEN не найден в переменных окружения")
     raise ValueError("BOT_TOKEN не задан")
@@ -33,7 +35,7 @@ class TextMessageFilter(BaseFilter):
     async def __call__(self, message: types.Message) -> bool:
         return message.content_type == 'text'
 
-# Список фраз на 10 языках
+# Список фраз
 love_phrases = [
     "I love you, Alena ❤️ (Английский)",
     "Я тебе кохаю, Олено ❤️ (Украинский)",
@@ -47,11 +49,12 @@ love_phrases = [
     "我爱你，阿莲娜 ❤️ (Китайский)"
 ]
 
-# URL изображений
-YES_PHOTO_URL = "https://imgur.com/Xuj0BOO"  # Исправленный URL
-NO_PHOTO_URL = "https://imgur.com/siRX1Il"   # Исправленный URL
+# Пути к файлам
+YES_PHOTO_URL = f"{BASE_URL}/static/images/yes.jpg"
+YES_VIDEO_URL = f"{BASE_URL}/static/videos/302786_tiny.mp4"
+NO_PHOTO_URL = f"{BASE_URL}/static/images/no.jpg"
 
-# Установка команд для меню бота
+# Установка команд
 async def set_commands(bot: Bot):
     commands = [
         BotCommand(command="/start", description="Запустить опрос")
@@ -73,6 +76,13 @@ async def send_new_poll(chat_id: int):
     except Exception as e:
         logger.error(f"Ошибка при отправке опроса: {e}")
 
+# Обработчик команды /start
+@dp.message(commands=["start"])
+async def cmd_start(message: types.Message):
+    logger.info(f"Получена команда /start от {message.from_user.id}")
+    await message.answer("Добро пожаловать! Отправьте любое сообщение, чтобы начать опрос.")
+    await send_new_poll(message.chat.id)
+
 # Обработчик текстовых сообщений
 @dp.message(TextMessageFilter())
 async def send_poll(message: types.Message):
@@ -87,25 +97,27 @@ async def handle_poll_answer(poll_answer: types.PollAnswer):
     logger.info(f"Получен ответ на опрос от {chat_id}: опция {option_id}")
     try:
         if option_id == 1:  # "Нет"
-            await bot.send_message(chat_id, "Ответ не верный")
+            await bot.send_message(chat_id, "Ответ не верный!")
             await bot.send_photo(chat_id, photo=NO_PHOTO_URL)
         else:  # "Да"
             for phrase in love_phrases:
                 await bot.send_message(chat_id, phrase)
-                await asyncio.sleep(0.5)  # Задержка между сообщениями для избежания спама
+                await asyncio.sleep(0.5)  # Задержка для избежания спама
             await bot.send_photo(chat_id, photo=YES_PHOTO_URL)
+            await bot.send_video(chat_id, video=YES_VIDEO_URL)
         await send_new_poll(chat_id)
     except Exception as e:
         logger.error(f"Ошибка при обработке ответа на опрос: {e}")
         await bot.send_message(chat_id, "Произошла ошибка, попробуйте позже.")
 
-# Минимальный веб-сервер для Render
+# Веб-сервер для Render и раздачи статических файлов
 async def handle(request):
     return web.Response(text="Bot is running")
 
 async def start_web_server():
     app = web.Application()
     app.add_routes([web.get('/', handle)])
+    app.add_routes([web.static('/static', 'static')])  # Раздача статических файлов
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', PORT)
@@ -115,12 +127,17 @@ async def start_web_server():
 # Основная функция
 async def main():
     try:
-        # Запускаем веб-сервер
         await start_web_server()
-        # Устанавливаем команды бота
         await set_commands(bot)
-        # Запускаем polling
-        await dp.start_polling(bot)
+        while True:
+            try:
+                await dp.start_polling(bot, timeout=20, limit=100, fast_connect=True)
+            except TelegramConflictError as e:
+                logger.error(f"Конфликт инстансов: {e}. Ждём 30 секунд...")
+                await asyncio.sleep(30)
+            except Exception as e:
+                logger.error(f"Polling завершился с ошибкой: {e}")
+                await asyncio.sleep(10)
     except Exception as e:
         logger.error(f"Ошибка в основном цикле: {e}")
 
